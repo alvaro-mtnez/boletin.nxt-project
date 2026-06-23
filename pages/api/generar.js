@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 const SYSTEM_PROMPT = `Eres el Asistente de extracción de contenido de Boletines de Diario AyE.
 
 Tu trabajo es analizar el HTML fuente del boletín y extraer su contenido estructurado en JSON.
