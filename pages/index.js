@@ -143,7 +143,11 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tipo, htmlFuente }),
       });
-      const resData = await res.json();
+      const text = await res.text();
+      if (!text) throw new Error("El servidor no devolvió respuesta.");
+      let resData;
+      try { resData = JSON.parse(text); }
+      catch { throw new Error("Respuesta inválida del servidor: " + text.substring(0, 100)); }
       if (!res.ok) throw new Error(resData?.error || "Error en el servidor.");
 
       const html = buildHtml(resData, tipo);
