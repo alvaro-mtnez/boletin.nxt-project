@@ -12,8 +12,6 @@ BLOQUES 2 en adelante: hero + 2 artículos en grid de 2 columnas.
   - "solo_hero": solo hero, sin artículos debajo
   - "solo_2": solo 2 artículos en grid de 2 columnas, sin hero
 
-Indica la variante del último bloque en el campo "tipo" de ese bloque.
-
 == BANNERS ==
 
 Los banners DFP son imágenes de pubads.g.doubleclick.net con sz=600x90.
@@ -45,34 +43,14 @@ REGLAS:
 
 RESPONDE ÚNICAMENTE con JSON válido, sin backticks, sin texto extra.`;
 
-export async function onRequestPost(context) {
-  const { request, env } = context;
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const apiKey = env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: "API key no configurada" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const { tipo, htmlFuente } = req.body;
+  if (!tipo || !htmlFuente) return res.status(400).json({ error: "Faltan parámetros" });
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Body inválido" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const { tipo, htmlFuente } = body;
-  if (!tipo || !htmlFuente) {
-    return new Response(JSON.stringify({ error: "Faltan parámetros" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "API key no configurada en el servidor" });
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -91,34 +69,18 @@ export async function onRequestPost(context) {
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
-      return new Response(JSON.stringify({ error: data?.error?.message || "Error de Anthropic" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    if (!response.ok) return res.status(500).json({ error: data?.error?.message || "Error de Anthropic" });
 
     const raw = (data.content || []).map(b => b.text || "").join("");
     let parsed;
     try {
       parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
-    } catch {
-      return new Response(JSON.stringify({ error: "JSON inválido de la IA. Inténtalo de nuevo." }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+    } catch (e) {
+      return res.status(500).json({ error: "JSON inválido de la IA. Inténtalo de nuevo." });
     }
 
-    return new Response(JSON.stringify(parsed), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-
+    return res.status(200).json(parsed);
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message || "Error interno" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: e.message || "Error interno" });
   }
 }
